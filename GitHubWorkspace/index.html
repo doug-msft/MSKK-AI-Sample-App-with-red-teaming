@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite App</title>
+  </head>
+  <body>
+    <div id="app">
+      <h1>Azure OpenAI Chat</h1>
+      <div id="chat-window" style="border:1px solid #ccc; height:300px; overflow-y:auto; margin-bottom:10px; padding:10px;"></div>
+      <form id="chat-form">
+        <input id="chat-input" type="text" placeholder="Type your message..." style="width:80%;" autocomplete="off" />
+        <button type="submit">Send</button>
+      </form>
+      <button id="signin-btn" style="margin-top:10px;">Sign in with Microsoft</button>
+      <div id="status" style="color: #888; margin-top: 10px;"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
