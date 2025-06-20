@@ -1,5 +1,5 @@
 {
-  "name": "githubworkspace",
+  "name": "securitytestapp",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.5.2",
     "vite": "^6.3.5"
   },
   "dependencies": {

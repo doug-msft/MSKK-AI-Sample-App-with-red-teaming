@@ -33,23 +33,40 @@ export default function RedTeamPage({ signedIn, userName, status, onSignIn, onSi
   };
 
   const handleModelChange = (e) => {
-    setSelectedModel(e.target.value);
+    const selectedDeployment = e.target.value;
+    const selectedEndpoint = endpoints.find(endpoint => endpoint.deployment === selectedDeployment);
+    setSelectedModel(selectedDeployment);
+    console.log('Selected Endpoint:', selectedEndpoint);
+
+    // Interrupt the API call if ongoing
+    if (loading) {
+      setLoading(false);
+      setStatus('');
+      console.warn('OpenAI call interrupted due to model change.');
+    }
+
+    // Clear the chat history
+    setChat([{ sender: 'system', message: `Model selected: ${selectedDeployment}` }]);
   };
 
   const sendMessage = async () => {
-    if (!userInput.trim() || !signedIn || !selectedModel) return;
-    const newHistory = [
-      ...chat.filter(m => m.sender === 'user' || m.sender === 'ai').map(m => ({
-        role: m.sender === 'ai' ? 'assistant' : 'user',
-        content: m.message,
-      })),
-    ];
-    setChat([...chat, { sender: 'user', message: userInput }]);
+    if (!userInput.trim() || !signedIn || !selectedModel || loading) return;
+
+    const lastMessage = { sender: 'user', message: userInput };
+
+    // Prevent duplicate messages
+    if (chat.length > 0 && chat[chat.length - 1].message === userInput) {
+      console.warn('Duplicate message detected, not sending again.');
+      return;
+    }
+
+    setChat([...chat, lastMessage]);
     setLoading(true);
     try {
       console.log('[RedTeam] Sending to OpenAI:', userInput);
-      const selectedEndpoint = endpoints.find(endpoint => endpoint.modelName === selectedModel);
-      const aiResponse = await handleChat(userInput, redTeamSystemPrompt, newHistory, selectedEndpoint);
+      const selectedEndpoint = endpoints.find(endpoint => endpoint.deployment === selectedModel);
+      if (!selectedEndpoint) throw new Error('Selected endpoint is undefined.');
+      const aiResponse = await handleChat(userInput, redTeamSystemPrompt, [lastMessage], selectedEndpoint);
       console.log('[RedTeam] Received from OpenAI:', aiResponse);
       setChat(current => [...current, { sender: 'ai', message: aiResponse }]);
     } catch (err) {
@@ -120,7 +137,7 @@ export default function RedTeamPage({ signedIn, userName, status, onSignIn, onSi
   };
 
   return (
-    <div className="trip-companion-container" style={{ maxWidth: 500 }}>
+    <div className="trip-companion-container">
       {/* Shared sign in/out button and status */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         {!signedIn ? (
@@ -139,7 +156,6 @@ export default function RedTeamPage({ signedIn, userName, status, onSignIn, onSi
           </button>
         )}
       </div>
-      {/* Status message will be rendered at the bottom, not here */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
         <img
           src={logoRedTeam}
@@ -160,38 +176,35 @@ export default function RedTeamPage({ signedIn, userName, status, onSignIn, onSi
           <strong>Select LLM Model:</strong>
           <select value={selectedModel} onChange={handleModelChange} style={{ marginLeft: 8, padding: '0.3rem 0.7rem', borderRadius: 6 }}>
             <option value="">-- Select a model --</option>
-            <option value="o4-mini">o4-mini</option>
-            <option value="gpt-4">gpt-4</option>
+            {endpoints.map((endpoint, idx) => (
+              <option key={idx} value={endpoint.deployment}>{endpoint.deployment}</option>
+            ))}
           </select>
         </div>
       </div>
 
       <div style={{ marginBottom: 16 }}>
         <strong>Choose a test category:</strong>
-        <select value={selectedCategory} onChange={handleCategoryChange} style={{ marginLeft: 8, padding: '0.3rem 0.7rem', borderRadius: 6 }}>
+        <select value={selectedCategory} onChange={handleCategoryChange} style={{ marginLeft: 8, padding: '0.3rem 0.7rem', borderRadius: 6, backgroundColor: selectedModel ? 'white' : '#f0f0f0' }} disabled={!selectedModel}>
           <option value="">-- Select a category --</option>
           {categories.map((cat, idx) => (
             <option key={idx} value={cat}>{cat}</option>
           ))}
         </select>
       </div>
-      <div className="chat-box">
+      <div className="chat-box" style={{ opacity: selectedModel ? 1 : 0.5, pointerEvents: selectedModel ? 'auto' : 'none' }}>
         {chat.map((msg, idx) => (
-          <div key={idx} className={`chat-message ${msg.sender}`}>
-            {msg.sender === 'ai' ? (
-              <div className="ai-message">
-                <ReactMarkdown>{msg.message}</ReactMarkdown>
-              </div>
-            ) : (
+          <div key={idx} className={`chat-message ${msg.sender === 'user' ? 'user' : msg.sender === 'system' ? 'system' : 'ai'}`} style={msg.sender === 'system' ? { backgroundColor: '#e0e0e0', padding: '0.5rem', borderRadius: '6px' } : {}}>
+            {msg.sender === 'user' ? (
               <>You: {msg.message}</>
+            ) : (
+              <ReactMarkdown>{msg.message}</ReactMarkdown>
             )}
           </div>
         ))}
         {loading && (
           <div className="chat-message ai">
-            <span className="ai-typing">
-              <span style={{ marginLeft: 8 }}>AI is preparing a response...</span>
-            </span>
+            <span className="ai-typing">AI is preparing a response...</span>
           </div>
         )}
       </div>
@@ -204,14 +217,29 @@ export default function RedTeamPage({ signedIn, userName, status, onSignIn, onSi
       <div className="chat-input-row">
         <input
           type="text"
-          placeholder="Type your red team prompt..."
+          placeholder="Type your prompt to test the AI model..."
           value={userInput}
           onChange={e => setUserInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && sendMessage()}
+          disabled={!selectedModel || loading}
         />
-        <button onClick={sendMessage} disabled={loading || !signedIn}>Send</button>
+        <button onClick={sendMessage} disabled={!selectedModel || loading}>Send</button>
       </div>
-      <div style={{ color: '#888', marginTop: 10 }}>{status}</div>
+      <div style={{ color: '#888', marginTop: 10 }}>
+        {status}
+        {loading && (
+          <button
+            onClick={() => {
+              setLoading(false);
+              setStatus('');
+              console.warn('OpenAI call stopped by user.');
+            }}
+            style={{ marginLeft: 8, padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid #d32f2f', background: '#fbe9e7', color: '#d32f2f', cursor: 'pointer' }}
+          >
+            Stop
+          </button>
+        )}
+      </div>
     </div>
   );
 }

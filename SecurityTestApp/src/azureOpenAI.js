@@ -6,11 +6,13 @@ export const endpoints = [
     endpoint: "https://travelcompanionai-resource.cognitiveservices.azure.com/",
     modelName: "o4-mini",
     deployment: "TravelCompanion-o4-mini",
+    api_version: "2025-01-01-preview",
   },
   {
     endpoint: "https://travelcompanionai-resource.cognitiveservices.azure.com/",
     modelName: "model-router",
     deployment: "TravelCompanion-model-router",
+    api_version: "2025-01-01-preview",
   },
 ];
 
@@ -35,13 +37,12 @@ async function chatWithAzureOpenAI(messages, selectedEndpoint) {
     throw new Error("You must sign in first.");
   }
 
-  const apiVersion = "2025-01-01-preview";
   const azureADTokenProvider = async () => accessToken;
   const options = {
     endpoint: selectedEndpoint.endpoint,
     azureADTokenProvider,
     deployment: selectedEndpoint.deployment,
-    apiVersion,
+    apiVersion: selectedEndpoint.api_version,
   };
   const client = new AzureOpenAI(options);
 
@@ -77,11 +78,15 @@ export async function handleChat(userMessage, systemPrompt, history = [], select
         return null;
       }).filter(Boolean)
     : [];
+
+  // Prevent duplicate userMessage in messages array
+  const isDuplicate = openaiHistory.some(msg => msg.role === 'user' && msg.content === userMessage);
   const messages = [
     { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
     ...openaiHistory,
-    { role: 'user', content: userMessage },
+    ...(isDuplicate ? [] : [{ role: 'user', content: userMessage }]),
   ];
+
   console.log('[OpenAI] Sending messages:', messages);
   const response = await chatWithAzureOpenAI(messages, selectedEndpoint);
   console.log('[OpenAI] Received response:', response);
