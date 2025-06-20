@@ -1,12 +1,18 @@
-
 import { AzureOpenAI } from "openai";
 import { PublicClientApplication } from "@azure/msal-browser";
 
-
-const endpoint = "https://travelcompanionai-resource.cognitiveservices.azure.com/"; // e.g. https://your-resource-name.openai.azure.com/
-const modelName = "o4-mini"; // e.g. gpt-4, o4-mini
-const deployment = "TravelCompanion-o4-mini"; // e.g. my-deployment
-
+export const endpoints = [
+  {
+    endpoint: "https://travelcompanionai-resource.cognitiveservices.azure.com/",
+    modelName: "o4-mini",
+    deployment: "TravelCompanion-o4-mini",
+  },
+  {
+    endpoint: "https://travelcompanionai-resource.cognitiveservices.azure.com/",
+    modelName: "model-router",
+    deployment: "TravelCompanion-model-router",
+  },
+];
 
 // MSAL config
 const msalConfig = {
@@ -19,31 +25,37 @@ const msalConfig = {
 const msalInstance = new PublicClientApplication(msalConfig);
 let msalInitialized = false;
 const scopes = ["https://cognitiveservices.azure.com/.default"];
+
 let accessToken = null;
 let isSignedIn = false;
+let signedInAccount = null;
 
-
-
-async function chatWithAzureOpenAI(messages) {
+async function chatWithAzureOpenAI(messages, selectedEndpoint) {
   if (!accessToken) {
     throw new Error("You must sign in first.");
   }
 
   const apiVersion = "2025-01-01-preview";
-  // Provide a token provider function as required by the SDK
   const azureADTokenProvider = async () => accessToken;
   const options = {
-    endpoint,
+    endpoint: selectedEndpoint.endpoint,
     azureADTokenProvider,
-    deployment,
+    deployment: selectedEndpoint.deployment,
     apiVersion,
   };
   const client = new AzureOpenAI(options);
 
+  const formattedMessages = messages.map(msg => ({
+    ...msg,
+    content: Array.isArray(msg.content)
+      ? msg.content
+      : [{ type: 'text', text: msg.content }],
+  }));
+
   const response = await client.chat.completions.create({
-    messages,
-    max_completion_tokens: 1000,
-    model: modelName,
+    messages: formattedMessages,
+    max_completion_tokens: 10000,
+    model: selectedEndpoint.modelName,
   });
 
   if (response?.error !== undefined && response.status !== "200") {
@@ -52,16 +64,29 @@ async function chatWithAzureOpenAI(messages) {
   return response.choices[0].message.content;
 }
 
-
-export async function handleChat(userMessage, history) {
+export async function handleChat(userMessage, systemPrompt, history = [], selectedEndpoint) {
+  const openaiHistory = Array.isArray(history)
+    ? history.map(msg => {
+        if (msg.role && msg.content) return msg;
+        if (msg.sender && msg.message) {
+          return {
+            role: msg.sender === 'ai' ? 'assistant' : 'user',
+            content: msg.message,
+          };
+        }
+        return null;
+      }).filter(Boolean)
+    : [];
   const messages = [
-    { role: "system", content: "You are a helpful assistant." },
-    ...history,
-    { role: "user", content: userMessage },
+    { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+    ...openaiHistory,
+    { role: 'user', content: userMessage },
   ];
-  return await chatWithAzureOpenAI(messages);
+  console.log('[OpenAI] Sending messages:', messages);
+  const response = await chatWithAzureOpenAI(messages, selectedEndpoint);
+  console.log('[OpenAI] Received response:', response);
+  return response;
 }
-
 
 export async function signIn() {
   if (!msalInitialized) {
@@ -71,23 +96,37 @@ export async function signIn() {
   try {
     const loginResponse = await msalInstance.loginPopup({ scopes });
     const account = loginResponse.account;
+    signedInAccount = account;
     const tokenResponse = await msalInstance.acquireTokenSilent({ scopes, account });
     accessToken = tokenResponse.accessToken;
     isSignedIn = true;
     return true;
   } catch (err) {
-    // fallback to interactive if silent fails
     try {
       const tokenResponse = await msalInstance.acquireTokenPopup({ scopes });
       accessToken = tokenResponse.accessToken;
       isSignedIn = true;
+      const accounts = msalInstance.getAllAccounts();
+      signedInAccount = accounts && accounts.length > 0 ? accounts[0] : null;
       return true;
     } catch (popupErr) {
       accessToken = null;
       isSignedIn = false;
+      signedInAccount = null;
       throw popupErr;
     }
   }
+}
+
+export async function signOut() {
+  await msalInstance.logoutPopup();
+  accessToken = null;
+  isSignedIn = false;
+  signedInAccount = null;
+}
+
+export function getSignedInAccount() {
+  return signedInAccount;
 }
 
 export function getIsSignedIn() {
