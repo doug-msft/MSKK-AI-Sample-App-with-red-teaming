@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './style.css';
 import App from './App';
 import RedTeamPage from './RedTeamPage.jsx';
+import AdminPage, { fetchDeployments } from './AdminPage';
 import { signIn, signOut, getIsSignedIn, getSignedInAccount } from './azureOpenAI';
 
 function MainRouter() {
@@ -20,7 +21,7 @@ function MainRouter() {
       const account = getSignedInAccount();
       const name = account?.name || account?.username || '';
       setUserName(name);
-      setStatus(`Signed in as ${name}! You can now chat.`);
+      setStatus(`Signed in as ${name}!`);
     } catch (err) {
       setStatus('Sign-in failed: ' + (err.message || err));
     }
@@ -47,8 +48,9 @@ function MainRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<App {...sharedProps} />} />
+        <Route path="/" element={<App fetchDeployments={fetchDeployments} {...sharedProps} />} />
         <Route path="/red-team" element={<RedTeamPage {...sharedProps} />} />
+        <Route path="/admin" element={<AdminPage fetchDeployments={fetchDeployments} setStatus={setStatus} signedIn={signedIn} userName={userName} />} />
       </Routes>
     </BrowserRouter>
   );

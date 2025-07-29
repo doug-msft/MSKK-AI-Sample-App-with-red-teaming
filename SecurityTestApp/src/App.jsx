@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 // Date helpers
 function getTodayISO() {
@@ -13,9 +13,14 @@ import { useNavigate } from 'react-router-dom';
 import './style.css';
 
 import logoMain from './assets/Logo-mainpage.png';
-import { handleChat, signIn, getIsSignedIn, getSignedInAccount, signOut, endpoints } from './azureOpenAI';
+import { handleChat, signIn, getIsSignedIn, getSignedInAccount, signOut, Deployed_LLM_model_endpoints, accessToken } from './azureOpenAI';
+import config from './config';
+import { AZURE_PROJECTS } from './config';
+import { fetchDeployments } from './AdminPage';
 
 const systemPrompt = `You are a helpful travel companion AI responsible for researching and providing customized travel information. Based on the traveler's specified location and travel dates, create a thoughtful and detailed itinerary, including activities, top attractions, dining recommendations, and local tips.`;
+
+const Default_Azure_Endpoint = AZURE_PROJECTS[0].endpoint;
 
 export default function App({ signedIn, userName, status, onSignIn, onSignOut, setStatus, selectedModel, setSelectedModel }) {
   const [destination, setDestination] = useState('');
@@ -24,6 +29,8 @@ export default function App({ signedIn, userName, status, onSignIn, onSignOut, s
   const [history, setHistory] = useState([]);
   const [userInput, setUserInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   // Ensure end date is never before start date
@@ -61,9 +68,18 @@ export default function App({ signedIn, userName, status, onSignIn, onSignOut, s
     setStatus('Thinking...');
     try {
       console.log('[MainApp] Sending to OpenAI:', fullPrompt);
-      const selectedEndpoint = endpoints.find(endpoint => endpoint.deployment === selectedModel);
-      if (!selectedEndpoint) throw new Error('Selected endpoint is undefined.');
-      const aiResponse = await handleChat(fullPrompt, systemPrompt, [lastMessage], selectedEndpoint);
+      const selectedEndpoint = Deployed_LLM_model_endpoints.find(endpoint => endpoint.name === selectedModel);
+      console.log('[MainApp] Selected Endpoint:', selectedEndpoint);
+
+      if (!selectedEndpoint || !selectedEndpoint.endpoint_url) {
+        throw new Error('Selected endpoint is undefined or missing endpoint_url.');
+      }
+      const aiResponse = await handleChat(fullPrompt, systemPrompt, [lastMessage], {
+        endpoint_url: selectedEndpoint.endpoint_url,
+        name: selectedEndpoint.name,
+        api_version: selectedEndpoint.api_version || '2025-01-01-preview',
+        modelPublisher: selectedEndpoint.modelPublisher,
+      });
       setHistory(current => [...current, { role: 'assistant', content: aiResponse }]);
       setStatus('');
     } catch (err) {
@@ -142,7 +158,7 @@ export default function App({ signedIn, userName, status, onSignIn, onSignOut, s
 
   const handleModelChange = (e) => {
     const selectedDeployment = e.target.value;
-    const selectedEndpoint = endpoints.find(endpoint => endpoint.deployment === selectedDeployment);
+    const selectedEndpoint = Deployed_LLM_model_endpoints.find(endpoint => endpoint.name === selectedDeployment);
     setSelectedModel(selectedDeployment);
     console.log('Selected Endpoint:', selectedEndpoint);
 
@@ -166,6 +182,72 @@ export default function App({ signedIn, userName, status, onSignIn, onSignOut, s
     ]);
   };
 
+  const handleProjectChange = (event) => {
+    setSelectedProject(event.target.value);
+    console.log('Selected Project:', event.target.value);
+  };
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (signedIn) {
+        try {
+          const { status, data } = await fetchDeployments(Default_Azure_Endpoint);
+          console.log('Fetch Deployments Response Status:', status);
+          if (status === 200) {
+            setIsAdmin(true);
+            console.log('Admin status confirmed:', data);
+          } else {
+            setIsAdmin(false);
+            console.warn('Admin status denied with status:', status);
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+          setIsAdmin(false);
+        }
+      }
+    };
+    checkAdminStatus();
+  }, [signedIn, selectedModel]);
+
+  /*const fetchDeployments = async () => {
+    let response;
+    try {
+      const { accessTokenAI } = await obtainMultipleTokens();
+      const resourcename = config.AZURE_AI_PROJECT_NAME || 'travelcompanionai'; // Fallback to default if not set
+      const resource = `${resourcename}-resource`; // Set resource using resourcename
+      const endpoint = `https://${resource}.services.ai.azure.com/api/projects/${resourcename}/deployments?api-version=v1`;
+      console.log('Using endpoint:', endpoint);
+      response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${accessTokenAI}`,
+        },
+      });
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.error(`Unauthorized access to endpoint: ${endpoint}`);
+          setStatus(`Unauthorized access to endpoint. Make sure the user has permission`);
+        } else if (response.status === 403) {
+          console.error(`Access denied to endpoint: ${endpoint}`);
+        }
+        throw new Error(`Failed to fetch deployments: ${response.statusText}`);
+      }
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Invalid response format: Expected JSON');
+      }
+      const deployments = await response.json();
+      console.log('Deployments:', deployments);
+      return deployments;
+    } catch (error) {
+      console.error('Error fetching deployments:', error);
+      setStatus(`Error fetching deployments: ${error.message}`);
+      if (response && error.message.includes('Invalid response format')) {
+        console.error('Response body:', await response.text());
+      }
+      throw error;
+    }
+  };*/
+
   return (
     <div className="trip-companion-container">
       {/* Sign in/out button at the top */}
@@ -188,18 +270,29 @@ export default function App({ signedIn, userName, status, onSignIn, onSignOut, s
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
         <img src={logoMain} alt="Main Logo" className="logo" style={{ width: '100%', maxWidth: '100%', height: 'auto', maxHeight: 120, objectFit: 'cover', borderRadius: 12, background: 'transparent', boxShadow: 'none', marginBottom: 16 }} />
-        <button
-          style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1.2rem', cursor: 'pointer', marginBottom: 16 }}
-          onClick={() => navigate('/red-team')}
-        >
-          Go to Red Team Page
-        </button>
+        <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+          <button
+            style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1.2rem', cursor: 'pointer' }}
+            onClick={() => navigate('/red-team')}
+          >
+            Go to Red Team Page
+          </button>
+          {signedIn && isAdmin && (
+            <button
+              style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1.2rem', cursor: 'pointer' }}
+              onClick={() => navigate('/admin', { state: { signedIn } })}
+            >
+              Go to Admin Page
+            </button>
+          )}
+        </div>
+
         <div style={{ marginBottom: 16 }}>
           <strong>Select LLM Model:</strong>
           <select value={selectedModel} onChange={handleModelChange} style={{ marginLeft: 8, padding: '0.3rem 0.7rem', borderRadius: 6 }}>
             <option value="">-- Select a model --</option>
-            {endpoints.map((endpoint, idx) => (
-              <option key={idx} value={endpoint.deployment}>{endpoint.deployment}</option>
+            {Deployed_LLM_model_endpoints.map((endpoint, idx) => (
+              <option key={idx} value={endpoint.name}>{endpoint.name}</option>
             ))}
           </select>
         </div>
@@ -235,7 +328,7 @@ export default function App({ signedIn, userName, status, onSignIn, onSignOut, s
       </div>
       <div className="chat-box" style={{ opacity: selectedModel ? 1 : 0.5, pointerEvents: selectedModel ? 'auto' : 'none' }}>
         {history.length === 0 && (
-          <div className="chat-message ai">Welcome! Sign in and start chatting with Azure OpenAI.</div>
+          <div className="chat-message ai">Welcome! Sign in and select the LLM model to start chatting.</div>
         )}
         {signedIn && userName && history.length === 0 && (
           <div className="chat-message ai">Hi {userName}, how can I help you with your next adventure?</div>
