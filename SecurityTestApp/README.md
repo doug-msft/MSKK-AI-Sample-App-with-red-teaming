@@ -1,4 +1,4 @@
-# Azure OpenAI Chat App
+# Azure OpenAI Chat App V2.0
 
 This is a Vite-based JavaScript web app with a chat interface that authenticates to Entra ID (Azure AD) using @azure/identity and connects to Azure OpenAI.
 
@@ -13,11 +13,14 @@ This is a Vite-based JavaScript web app with a chat interface that authenticates
    ```sh
    npm install
    ```
-2. Set the following environment variables (in your shell or .env file):
+2. Set the following environment variables (in the config.js file):
    - AZURE_CLIENT_ID
    - AZURE_TENANT_ID
-   - AZURE_CLIENT_SECRET
-3. Start the development server:
+
+3. Make sure you have the pre-requisites installed on your machine
+   - You can run the 
+
+4. Start the development server:
    ```sh
    npm run dev
    ```

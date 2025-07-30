@@ -1,3 +1,4 @@
+# Check pre-requisites and install if necessary (Version 2.0)
 # Prompt the user before proceeding
 Write-Host "This script will check if pre-requisites are met. If not, it will attempt to install the pre-requisites and copy the GitHub sample app locally. You will have the option to approve the installation of each of the following pre-requisites: " -ForegroundColor Yellow
 Write-Host "A) Node.js" -ForegroundColor Yellow
