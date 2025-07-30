@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@azure-rest/ai-inference": "^1.0.0-beta.6",
+    "@azure/arm-resources": "^6.1.0",
+    "@azure/identity": "^4.10.1"
+  }
+}
