@@ -1,9 +1,8 @@
 // This file contains the configuration for the Azure AI Foundry project.
 // Make sure to add your Entra ID Tenant ID, Client ID, and Subscription ID.
 const config = {
-  AZURE_TENANT_ID: "330be9cd-5a6a-47db-9d51-d6060da7c8ef",
-  AZURE_CLIENT_ID: "585de4bf-5fcc-47b4-8111-dc650e6244ad",
-  AZURE_SUBSCRIPTION_ID: "ce67afd5-b7ee-4d99-a6a8-c0eace2648f3",
+  AZURE_TENANT_ID: "tbd",
+  AZURE_CLIENT_ID: "tbd",
 };
 
 //List your project names from https://ai.azure.com
