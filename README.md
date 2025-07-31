@@ -13,33 +13,27 @@ This is a Vite-based JavaScript web app with a chat interface that authenticates
    ```sh
    Install-prerequisites.ps1
    ```
-2. Deploy at least two LLM models in Azure AI Foundry, and capture the deployment information such as 
+2. Deploy at least two LLM models in Azure AI Foundry, and capture the deployment information such as:
     - endpoint_url: "<Replace_with_URL>",
     - name: "<Name_of_Deployment>",
     - modelName: "o4-mini",
     - api_version: "2025-01-01-preview",
     - modelPublisher: "OpenAI"
+*The reason to have at least two LLM models, is so you can have different Azure Content Safety filters for each LLM to demo different use cases*
 
-3. Give user access to the LLM apps
+3. Give user access to the LLM apps 
+*This step is only needed if testing with regular users, if you test with the owner of the LLM app, this step is not needed*
 
-3. Create an App in Entra ID to authenticate as the user, and capture the App client ID and Entra Tenant ID.
+4. Create an App in Entra ID to authenticate as the user, and capture the App client ID and Entra Tenant ID.
 
-3. Set the following environment variables (in the config.js file):
-   - AZURE_CLIENT_ID
-   - AZURE_TENANT_ID
+5. Set the following environment variables (in the config.js file):
+   - AZURE_CLIENT_ID (This is the Client ID of the App you created to authenticate as the user)
+   - AZURE_TENANT_ID (This is your Entra ID tenant ID)
+   - AZURE_PROJECTS (List the project names of your Azure AI Foundry projects)
+   - Deployed_LLM_model_endpoints (list the detail information about your LLM models deployed in Azure AI Foundry)
 
-4. Start the development server:
+6. Start the development server:
+*From Powershell navigate to the folder where the App is stored and run:*
    ```sh
    npm run dev
    ```
-
-## Deployment
-- Follow Azure best practices for authentication and deployment.
-- You can deploy this app to Azure Static Web Apps, Azure App Service, or other Azure hosting options.
-
-## Customization
-- Update the Azure OpenAI endpoint, deployment, and model in the source code as needed.
-
----
-
-For more details, see the Azure OpenAI and @azure/identity documentation.
