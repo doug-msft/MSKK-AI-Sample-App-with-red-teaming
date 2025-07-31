@@ -9,16 +9,24 @@ This is a Vite-based JavaScript web app with a chat interface that authenticates
 - Ready for Azure deployment
 
 ## Getting Started
-1. Install dependencies:
+1. Download and run the PS script to check and install dependencies, and clone the app files locally:
    ```sh
-   npm install
+   Install-prerequisites.ps1
    ```
-2. Set the following environment variables (in the config.js file):
+2. Deploy at least two LLM models in Azure AI Foundry, and capture the deployment information such as 
+    endpoint_url: "<Replace_with_URL>",
+    name: "<Name_of_Deployment>",
+    modelName: "o4-mini",
+    api_version: "2025-01-01-preview",
+    modelPublisher: "OpenAI",
+
+3. Give user access to the LLM apps
+
+3. Create an App in Entra ID to authenticate as the user, and capture the App client ID and Entra Tenant ID.
+
+3. Set the following environment variables (in the config.js file):
    - AZURE_CLIENT_ID
    - AZURE_TENANT_ID
-
-3. Make sure you have the pre-requisites installed on your machine
-   - You can run the 
 
 4. Start the development server:
    ```sh
