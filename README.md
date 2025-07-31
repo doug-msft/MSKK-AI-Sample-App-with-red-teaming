@@ -14,11 +14,11 @@ This is a Vite-based JavaScript web app with a chat interface that authenticates
    Install-prerequisites.ps1
    ```
 2. Deploy at least two LLM models in Azure AI Foundry, and capture the deployment information such as 
-    endpoint_url: "<Replace_with_URL>",
-    name: "<Name_of_Deployment>",
-    modelName: "o4-mini",
-    api_version: "2025-01-01-preview",
-    modelPublisher: "OpenAI",
+    - endpoint_url: "<Replace_with_URL>",
+    - name: "<Name_of_Deployment>",
+    - modelName: "o4-mini",
+    - api_version: "2025-01-01-preview",
+    - modelPublisher: "OpenAI"
 
 3. Give user access to the LLM apps
 
